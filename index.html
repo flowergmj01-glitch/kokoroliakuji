@@ -516,10 +516,35 @@
             let resultStatus;
 
             if (isSuccess) {
-               // 成功 -> SR
-               const tier = 'SR';
-               const itemName = getRandomItem(tier);
-               resultItem = { id: Date.now(), tier, name: itemName, isNew: true };
+               // 成功邏輯更新
+               let nextTier;
+               let newItemName;
+
+               if (currentTier === 'N') {
+                   nextTier = 'SR';
+                   newItemName = getRandomItem(nextTier);
+               } else if (currentTier === 'R') {
+                   nextTier = 'SSR';
+                   newItemName = getRandomItem(nextTier);
+               } else if (currentTier === 'SR') {
+                   // UR 或 SSR
+                   nextTier = Math.random() > 0.5 ? 'UR' : 'SSR';
+                   newItemName = getRandomItem(nextTier);
+               } else if (currentTier === 'SSR') {
+                   nextTier = 'UR';
+                   newItemName = getRandomItem(nextTier);
+               } else if (currentTier === 'UR') {
+                   // UR 合成特殊獎勵
+                   nextTier = 'UR'; // 保持 UR 階級方便顯示
+                   newItemName = "心物語永久免費(請洽管理員)";
+               }
+
+               resultItem = {
+                 id: Date.now(),
+                 tier: nextTier,
+                 name: newItemName,
+                 isNew: true
+               };
                resultStatus = 'success';
             } else {
                // 失敗 -> R 或 N
@@ -540,8 +565,9 @@
             if (!item) return;
 
             if (item.tier === 'UR') {
-              alert("傳說級幻想過於強大，無法放入合成台！");
-              return;
+              // 移除限制: 允許 UR 放入
+              // alert("傳說級幻想過於強大，無法放入合成台！");
+              // return;
             }
 
             if (selectedIds.includes(id)) {
@@ -762,9 +788,10 @@
                             <FlaskConical className="text-rose-500 ml-1" size={32} />
                           </div>
                           <h2 className="text-xl font-black text-rose-500">魔法合成台</h2>
-                          <p className="text-xs text-rose-400 mb-6 font-medium bg-rose-50 inline-block px-3 py-1 rounded-full">
-                            投入 4 個素材 🔥 / 33% 失敗率 💥
-                          </p>
+                          <div className="text-xs text-rose-400 mb-6 font-medium bg-rose-50 inline-block px-3 py-1 rounded-full">
+                            <p>投入 4 個素材 🔥 / 33% 失敗率 💥</p>
+                            <p className="mt-1">N➡SR | R➡SSR | SR➡UR/SSR | SSR➡UR</p>
+                          </div>
 
                           <div className="grid grid-cols-4 gap-2 mb-8">
                             {[0, 1, 2, 3].map((index) => (
@@ -803,7 +830,7 @@
                            {alchemyResult.status === 'success' ? '合成大成功！' : '合成失敗...'}
                          </h3>
                          <p className="text-sm text-stone-500 mb-4 font-bold">
-                           {alchemyResult.status === 'success' ? '太神啦！必定獲得 SR 物品！' : '嗚嗚...物品劣化成普通雜物了'}
+                           {alchemyResult.status === 'success' ? '太神啦！合成升級成功！' : '嗚嗚...物品劣化成普通雜物了'}
                          </p>
                          <div className="max-w-[160px] mx-auto transform rotate-2 hover:rotate-0 transition-transform">
                            <ItemCard item={alchemyResult.item} />
