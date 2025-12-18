@@ -1,0 +1,997 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>心物語女僕咖啡廳：甜蜜合成術</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- React & ReactDOM -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
+        
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: #fff7ed; /* orange-50 / Creamy Milk Tea color */
+            color: #431407; /* amber-950 / Dark Coffee */
+        }
+
+        /* Custom Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.4s ease-out forwards;
+        }
+
+        @keyframes bounceIn {
+            0% { transform: scale(0.3); opacity: 0; }
+            50% { transform: scale(1.05); opacity: 1; }
+            70% { transform: scale(0.9); }
+            100% { transform: scale(1); }
+        }
+        .animate-bounce-in {
+            animation: bounceIn 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards;
+        }
+
+        @keyframes coinJump {
+            0%, 100% { transform: translateY(0) scale(1); color: #f59e0b; }
+            50% { transform: translateY(-5px) scale(1.2); color: #fbbf24; }
+        }
+        .animate-coin-jump {
+            animation: coinJump 0.3s ease-in-out;
+        }
+        
+        .pb-safe {
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+
+        /* Custom Scrollbar for inventory */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #fff7ed; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #fed7aa; 
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #fdba74; 
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useMemo, useEffect } = React;
+
+        // --- Icons Components ---
+        const IconBase = ({ size = 24, className = "", children }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                {children}
+            </svg>
+        );
+
+        const Sparkles = (props) => (
+            <IconBase {...props}><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M9 3v4"/><path d="M3 9h4"/><path d="M3 5h4"/></IconBase>
+        );
+        const FlaskConical = (props) => (
+            <IconBase {...props}><path d="M10 2v7.527a2 2 0 0 1-.211.896L4.72 20.55a1 1 0 0 0 .9 1.45h12.76a1 1 0 0 0 .9-1.45l-5.069-10.127A2 2 0 0 1 14 9.527V2"/><path d="M8.5 2h7"/><path d="M7 16h10"/></IconBase>
+        );
+        const ShoppingBag = (props) => (
+            <IconBase {...props}><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></IconBase>
+        );
+        const Coins = (props) => (
+            <IconBase {...props}><circle cx="8" cy="8" r="6"/><path d="M18.09 10.37A6 6 0 1 1 10.34 18"/><path d="M7 6h1v4"/><path d="m16.71 13.88.7 .71-2.82 2.82"/></IconBase>
+        );
+        const Trash2 = (props) => (
+            <IconBase {...props}><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></IconBase>
+        );
+        const Zap = (props) => (
+            <IconBase {...props}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></IconBase>
+        );
+        const Crown = (props) => (
+            <IconBase {...props}><path d="m2 4 3 12h14l3-12-6 7-4-7-4 7-6-7zm3 16h14"/></IconBase>
+        );
+        const Heart = (props) => (
+            <IconBase {...props}><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></IconBase>
+        );
+        const Gift = (props) => (
+            <IconBase {...props}><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13"/><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5"/></IconBase>
+        );
+        const Ticket = (props) => (
+            <IconBase {...props}><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/><path d="M13 5v2"/><path d="M13 17v2"/><path d="M13 11v2"/></IconBase>
+        );
+        const X = (props) => (
+            <IconBase {...props}><path d="M18 6 6 18"/><path d="m6 6 12 12"/></IconBase>
+        );
+        const ThumbsUp = (props) => (
+            <IconBase {...props}><path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2h0a3.13 3.13 0 0 1 3 3.88Z"/></IconBase>
+        );
+        const BookOpen = (props) => (
+            <IconBase {...props}><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></IconBase>
+        );
+        const Handshake = (props) => (
+            <IconBase {...props}><path d="m11 11 1.35-1.35a5.025 5.025 0 0 1 2.275-.85 2.5 2.5 0 0 1 2.975 1.6 5.379 5.379 0 0 1-.875 4.3l-5.7 5.7L6 15l5-5Z"/><path d="M18 4a2.5 2.5 0 0 0-4.084 1.258"/><path d="M22 6a2.5 2.5 0 0 0-3.326-1.077"/><path d="M2 12h2"/><path d="M4 12v-2a2 2 0 0 1 2-2h2.004"/></IconBase>
+        );
+        const ChevronDown = (props) => (
+            <IconBase {...props}><path d="m6 9 6 6 6-6"/></IconBase>
+        );
+        const ChevronUp = (props) => (
+            <IconBase {...props}><path d="m18 15-6-6-6 6"/></IconBase>
+        );
+
+
+        // --- 配置與資料 ---
+        // 調整機率: UR 2%, SSR 5%
+        // 剩餘: 1 - 0.02 - 0.05 = 0.93. 
+        // SR: 0.13, R: 0.30, N: 0.50 (總和 1.0)
+        const TIERS = {
+          UR: { label: 'UR', name: '傳說・奇蹟邂逅', color: 'text-rose-600', bg: 'bg-rose-100', border: 'border-rose-400', probability: 0.02, icon: '👑' },
+          SSR: { label: 'SSR', name: '璀璨・閃耀誓言', color: 'text-amber-600', bg: 'bg-amber-100', border: 'border-amber-400', probability: 0.05, icon: '✨' },
+          SR: { label: 'SR', name: '甜蜜・心動魔法', color: 'text-purple-600', bg: 'bg-purple-100', border: 'border-purple-300', probability: 0.13, icon: '💖' },
+          R: { label: 'R', name: '溫馨・日常物語', color: 'text-blue-600', bg: 'bg-blue-100', border: 'border-blue-300', probability: 0.30, icon: '🎀' },
+          N: { label: 'N', name: '幸運・微小祝福', color: 'text-stone-500', bg: 'bg-stone-50', border: 'border-stone-300', probability: 0.50, icon: '☕' },
+        };
+
+        const ITEMS_DATA = {
+          UR: [
+            "專屬 10min 視訊通話", 
+            "指定女僕手寫信", 
+            "一日廚房小精靈體驗", 
+            "當日出勤全女僕手機大合照兩張", 
+            "跟女僕一起拍限時動態一則", 
+            "跟女僕一起在店內唱歌(一首)",
+            "女僕為你做專屬便當/主餐",
+            "指定女僕一起打遊戲(由女僕決定遊戲)",
+            "專屬起床鬧鐘錄音(客製化)",
+            "心物語全員生日快樂歌影片",
+            "女僕親手設計的似顏繪T恤",
+            "與女僕的模擬約會10min(店內用餐)",
+            "任選女僕私密語音檔：睡前悄悄話",
+            "女僕全員唇印簽名板",
+            "30秒手機拍到飽",
+            "女僕親手製作的甜點(一人份)",
+            "指定女僕拍攝1分鐘影片",
+            "指定女僕畫到滿出來超精緻簽繪",
+            "進店專屬特別招呼語",
+            "心物語制服體驗乙次"
+          ],
+          SSR: [
+            "心物語5月份活動指定權一次",
+            "任選女僕富士拍立得乙張(現場拍)", 
+            "15秒客製化影片券", 
+            "成員的隨身小物 (複製品)",
+            "指定女僕簽繪板(小)", 
+            "全員女僕掛軸(小)",
+            "今日店內播放歌單決定權", 
+            "指定女僕發文(女僕日記)在心物語臉書", 
+            "拍立得兌換券五張",
+            "指定成員的私物",
+            "女僕雨服寫真集(全員)",
+            "女僕制服寫真集(隨機成員)",
+            "選擇一位女僕坐你旁邊30秒互動",
+            "女僕親自為你畫似顏繪(含上色)",
+            "指定女僕拍立得相冊一本"
+          ],
+          SR: [
+            "痛打泡芙卷",
+            "指定女僕手繪撲克牌拍立得乙張",
+            "簽拍兌換券(指定女僕)", 
+            "手機拍券 (指定女僕)", 
+            "結帳遇到遊戲關卡直接過關券", 
+            "指定女僕特製手機桌布 ",
+            "隨機精緻拍 (Random Deco Cheki)", 
+            "活動日預約優先券", 
+            "過往女僕徽章盲抽2抽",
+            "雙人女僕合照券 (手機拍)",
+            "簡易簽繪泳裝拍(隨機女僕)",
+            "三人女僕合照拍立得(已拍好,隨機)",
+            "指定姿勢拍立得(摸頭)",
+            "指定姿勢拍立得(愛心)",
+            "女僕的魔法咒語影片",
+            "與女僕比腕力挑戰",
+            "深情對視挑戰(10秒)",
+            "拍立得背面撰寫兌換券",
+            "當日結帳金額多送2點",
+            "各種耳飾造型簡易簽拍(貓耳/兔耳等)",
+            "捏臉頰拍立得",
+            "手背吻(隔空)拍立得",
+            "女僕生氣罵人語音(獎勵?)",
+            "女僕來店招呼影片(全員)",
+            "贈送一份鬆餅(任選口味)",
+            "女僕模仿秀(15秒)",
+            "贈送一份烤布蕾",
+            "指定成員的搞怪自拍",
+            "贈送一杯紅茶",
+            "贈送一份魔法套餐(含拍立得)"
+          ],
+          R: [
+            "隨機女僕白拍 (無簽名)", "女僕白拍  (指定成員)", "簽繪券 (物品)", "心物語點數x1",
+            "隨機生寫真乙張", "心物語交換日記一本", "女僕握手券 (3秒)", 
+            "夢夢 顏藝三種(不可攝影)", "夢夢 的激勵語音15秒", "夢夢 的可愛四連拍手機照",
+            "Aki 幫你綁雙馬尾(50秒交流)", "Aki 的滑雪講堂(5分鐘)", "Aki 的傲嬌語音",
+            "蕾娜帶你喜歡熊貓(2分鐘熊貓推廣)", "蕾娜 的髮型教學(1分鐘)", "蕾娜用過的posca拍筆",
+            "小葵 推薦你吃甜點(50秒交流)", "小葵 的特製自拍小卡", "小葵 的小熊貓插畫",
+            "律 一起跳舞(20秒)", "律 的手繪吉伊卡哇插圖", "律 的應援扇",
+            "綾羽 的初代制服精緻拍立得", "綾羽 的推薦書單(交流2分鐘)", "綾羽 的香水試紙",
+            "莉加 的精緻簽繪私服拍立得", "莉加 的隨機私物", "莉加 的姓名貼紙整張",
+            "小鹿 的30秒人物速寫", "小鹿 的紙膠帶收藏(私物)", "小鹿 迪士尼手機照乙張",
+            "跟千代一起施狗狗魔法 ", "千代 的交換日記回覆資格", "千代 的活動服書籤乙張(共10款隨機)",
+            "千音 看著你甜蜜微笑5秒", "千音 清唱喜歡的歌20秒", "千音的追星日記(手機拍乙張)",
+            "牧 的追星手機拍乙張", "跟牧一起拍5秒短影片", "跟牧挑戰誰先笑(贏了可得手機拍乙張)",
+            "跟SAYUKI一起看刀也影片5分鐘", "咲雪 的特製電繪", "跟咲雪一起跳健康操1分鐘 ",
+            "跟小天一起十連手機拍", "小天 的追星手機拍", "小天 的韓國偶像講堂(5分鐘)",
+            "尼克 的深情注視(5秒)", "尼克 的COSPLAY精緻簽拍", "尼克 的BL講堂(5分鐘)",
+            "隨機成員杯墊", "心物語Logo徽章", "成員Q版鑰匙圈(隨機)",
+            "透明資料夾", "迷你海報", "紙膠帶(Logo款)"
+          ],
+          N: [
+            "一番賞一日上限開放至8抽卷",
+            "眼神關愛券(5秒)", 
+            "隨機女僕表情包貼紙(A 鬥雞眼)", 
+            "隨機女僕表情包貼紙(B 眨眼)",   
+            "隨機女僕表情包貼紙(C 竊笑)",   
+            "隨機女僕表情包貼紙(D 怒怒臉)", 
+            "隨機女僕表情包貼紙(E 沒瀏海特殊造型)", 
+            "面紙一包 (印有心物語Logo)", 
+            "對面主人對你稱讚三句", 
+            "廚房小精靈微笑一秒",
+            "飲料多10cc",
+            "空氣擊掌券",
+            "空氣握手券",
+            "隱形的簽名(空氣)",
+            "心物語公約小卡",
+            "夢夢的精神喊話卡片",
+            "今日出勤女僕合照(限活動日)",
+            "謝謝惠顧糖果",
+            "結帳可指定女僕"
+          ]
+        };
+
+        // --- 工具函數 ---
+        const getRandomItem = (tier) => {
+          const list = ITEMS_DATA[tier];
+          return list[Math.floor(Math.random() * list.length)];
+        };
+
+        const determineTier = () => {
+          const rand = Math.random();
+          let cumulative = 0;
+          if (rand < (cumulative += TIERS.UR.probability)) return 'UR';
+          if (rand < (cumulative += TIERS.SSR.probability)) return 'SSR';
+          if (rand < (cumulative += TIERS.SR.probability)) return 'SR';
+          if (rand < (cumulative += TIERS.R.probability)) return 'R';
+          return 'N';
+        };
+
+        const getTierOrder = (tier) => {
+          const order = ['UR', 'SSR', 'SR', 'R', 'N'];
+          return order.indexOf(tier);
+        };
+
+        const getNextTier = (tier) => {
+          const order = ['N', 'R', 'SR', 'SSR', 'UR'];
+          const idx = order.indexOf(tier);
+          return idx < order.length - 1 ? order[idx + 1] : null;
+        };
+
+        // --- 猜拳組件 ---
+        const RockPaperScissorsModal = ({ onClose, onWin, onLoseAction }) => {
+          const [gameState, setGameState] = useState('choice'); // choice, result
+          const [userChoice, setUserChoice] = useState(null);
+          const [cpuChoice, setCpuChoice] = useState(null);
+          const [result, setResult] = useState(null); // win, lose, draw
+
+          const choices = [
+            { id: 'rock', icon: '✊', label: '石頭' },
+            { id: 'paper', icon: '🖐️', label: '布' },
+            { id: 'scissors', icon: '✌️', label: '剪刀' }
+          ];
+
+          const handleChoice = (choiceId) => {
+            const cpu = choices[Math.floor(Math.random() * choices.length)];
+            setUserChoice(choices.find(c => c.id === choiceId));
+            setCpuChoice(cpu);
+            
+            let res = 'draw';
+            if (choiceId === cpu.id) {
+              res = 'draw';
+            } else if (
+              (choiceId === 'rock' && cpu.id === 'scissors') ||
+              (choiceId === 'paper' && cpu.id === 'rock') ||
+              (choiceId === 'scissors' && cpu.id === 'paper')
+            ) {
+              res = 'win';
+            } else {
+              res = 'lose';
+            }
+            
+            setResult(res);
+            setGameState('result');
+
+            if (res === 'win') {
+              setTimeout(() => {
+                onWin();
+              }, 1200); 
+            }
+          };
+
+          const handleReset = () => {
+            setGameState('choice');
+            setUserChoice(null);
+            setCpuChoice(null);
+            setResult(null);
+          };
+
+          return (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+              <div className="bg-[#fff7ed] rounded-3xl p-6 w-full max-w-sm shadow-2xl border-4 border-[#fca5a5] animate-bounce-in text-[#431407]">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-xl font-black text-rose-500">🍓 沒錢了嗎？來猜拳！</h3>
+                  <button onClick={onClose} className="text-stone-400 hover:text-stone-600"><X size={24}/></button>
+                </div>
+
+                {gameState === 'choice' && (
+                  <div className="text-center py-4">
+                    <p className="mb-6 font-bold text-stone-600">贏了送 <span className="text-amber-500 text-xl">3000</span> 幣！</p>
+                    <div className="flex justify-center gap-4">
+                      {choices.map(c => (
+                        <button 
+                          key={c.id}
+                          onClick={() => handleChoice(c.id)}
+                          className="w-20 h-20 rounded-2xl bg-white border-2 border-rose-200 hover:bg-rose-50 hover:scale-110 transition-all text-4xl flex items-center justify-center shadow-sm"
+                        >
+                          {c.icon}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {gameState === 'result' && (
+                  <div className="text-center py-4">
+                     <div className="flex justify-center items-center gap-8 text-5xl mb-6">
+                        <div className="animate-bounce-small">
+                          <div className="text-xs font-bold text-stone-400 mb-2">你</div>
+                          {userChoice.icon}
+                        </div>
+                        <div className="text-2xl font-black text-stone-300">VS</div>
+                        <div className="animate-bounce-small" style={{ animationDelay: '0.1s' }}>
+                           <div className="text-xs font-bold text-stone-400 mb-2">心物語</div>
+                           {cpuChoice.icon}
+                        </div>
+                     </div>
+
+                     {result === 'draw' && (
+                       <div>
+                         <p className="text-lg font-bold text-stone-500 mb-4">平手！再來一次！</p>
+                         <button onClick={handleReset} className="px-6 py-2 bg-stone-200 rounded-full font-bold text-stone-600">重來</button>
+                       </div>
+                     )}
+
+                     {result === 'win' && (
+                       <div>
+                         <p className="text-2xl font-black text-amber-500 mb-2">你贏了！🎉</p>
+                         <p className="text-sm text-stone-400">正在發送獎勵...</p>
+                       </div>
+                     )}
+
+                     {result === 'lose' && (
+                       <div className="animate-fade-in">
+                         <p className="text-lg font-bold text-stone-400 mb-4">嗚嗚輸了...</p>
+                         <button 
+                           onClick={onLoseAction}
+                           className="w-full bg-gradient-to-r from-rose-400 to-rose-500 text-white font-bold p-4 rounded-xl shadow-lg hover:shadow-rose-200 hover:scale-[1.02] transition-all flex items-center justify-center gap-2 text-sm"
+                         >
+                           <Handshake size={18} />
+                           我會遵守心物語公約
+                         </button>
+                         <p className="text-[10px] text-stone-400 mt-2">(點擊獲得 1000 幣)</p>
+                       </div>
+                     )}
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        };
+
+        // --- 主應用組件 ---
+        const App = () => {
+          const [coins, setCoins] = useState(1000); 
+          const [inventory, setInventory] = useState([]);
+          const [selectedIds, setSelectedIds] = useState([]);
+          const [activeTab, setActiveTab] = useState('gacha'); 
+          const [lastDraw, setLastDraw] = useState(null);
+          const [alchemyResult, setAlchemyResult] = useState(null);
+          const [inventoryView, setInventoryView] = useState('owned'); 
+          const [expandedTiers, setExpandedTiers] = useState({ UR: true, SSR: true, SR: true, R: true, N: true });
+          
+          const [showRPS, setShowRPS] = useState(false);
+          const [coinAnimating, setCoinAnimating] = useState(false);
+          
+          // 保底與累計抽數 State
+          const [pityCounter, setPityCounter] = useState(0); 
+          const [totalDraws, setTotalDraws] = useState(0); 
+
+          const TIER_ORDER = ['UR', 'SSR', 'SR', 'R', 'N'];
+
+          // 觸發金幣動畫
+          const triggerCoinAnim = () => {
+             setCoinAnimating(true);
+             setTimeout(() => setCoinAnimating(false), 300);
+          };
+
+          const toggleTier = (tier) => {
+            setExpandedTiers(prev => ({ ...prev, [tier]: !prev[tier] }));
+          };
+
+          const handleDraw = (amount = 1) => {
+            const cost = amount * 100;
+            
+            if (coins < cost) {
+              setShowRPS(true);
+              return;
+            }
+
+            const newItems = [];
+            let currentPity = pityCounter;
+
+            for (let i = 0; i < amount; i++) {
+              let tier;
+              
+              // 保底機制: 每 100 抽保底 UR (即 currentPity 0~98 為普通, 99 為保底)
+              if (currentPity >= 99) { 
+                 tier = 'UR';
+                 currentPity = 0;
+              } else {
+                 tier = determineTier();
+                 if (tier === 'UR') {
+                    currentPity = 0; // 抽到 UR 重置保底
+                 } else {
+                    currentPity++;
+                 }
+              }
+
+              const itemName = getRandomItem(tier);
+              newItems.push({
+                id: Date.now() + i + Math.random(),
+                tier,
+                name: itemName,
+                isNew: true
+              });
+            }
+
+            setCoins(prev => prev - cost);
+            setInventory(prev => [...newItems, ...prev]);
+            setLastDraw(newItems);
+            setAlchemyResult(null);
+            setPityCounter(currentPity);
+            setTotalDraws(prev => prev + amount);
+          };
+
+          const handleRPSWin = () => {
+            setCoins(prev => prev + 3000); 
+            triggerCoinAnim();
+            setShowRPS(false);
+            // alert removed as requested
+          };
+
+          const handleRPSLoseAction = () => {
+            setCoins(prev => prev + 1000); 
+            triggerCoinAnim();
+            setShowRPS(false);
+            // alert removed as requested
+          };
+
+          // 合成術邏輯：需要 4 個物品
+          const handleTransmute = () => {
+            if (selectedIds.length !== 4) return;
+
+            const item1 = inventory.find(i => i.id === selectedIds[0]);
+
+            if (!item1) {
+              alert("合成失敗：物品錯誤");
+              return;
+            }
+
+            setInventory(prev => prev.filter(i => !selectedIds.includes(i.id)));
+            setSelectedIds([]);
+
+            const currentTier = item1.tier;
+            // 成功機率 > 0.33 (67% 成功)
+            const isSuccess = Math.random() > 0.33;
+            
+            let resultItem;
+            let resultStatus;
+
+            if (isSuccess) {
+               // 成功 -> SR
+               const tier = 'SR';
+               const itemName = getRandomItem(tier);
+               resultItem = { id: Date.now(), tier, name: itemName, isNew: true };
+               resultStatus = 'success';
+            } else {
+               // 失敗 -> R 或 N
+               const failTier = Math.random() > 0.5 ? 'R' : 'N';
+               const itemName = getRandomItem(failTier);
+               resultItem = { id: Date.now(), tier: failTier, name: itemName, isNew: true };
+               resultStatus = 'fail';
+            }
+
+            setInventory(prev => [resultItem, ...prev]);
+            setAlchemyResult({ status: resultStatus, item: resultItem, fromTier: currentTier });
+          };
+
+          const toggleSelection = (id) => {
+            if (activeTab !== 'alchemy') return;
+
+            const item = inventory.find(i => i.id === id);
+            if (!item) return;
+
+            if (item.tier === 'UR') {
+              alert("傳說級幻想過於強大，無法放入合成台！");
+              return;
+            }
+
+            if (selectedIds.includes(id)) {
+              setSelectedIds(prev => prev.filter(sid => sid !== id));
+            } else {
+              if (selectedIds.length > 0) {
+                const firstItem = inventory.find(i => i.id === selectedIds[0]);
+                if (firstItem && firstItem.tier !== item.tier) {
+                  alert("合成術必須使用同階級物品！");
+                  return;
+                }
+              }
+
+              if (selectedIds.length >= 4) {
+                setSelectedIds(prev => [...prev.slice(1), id]);
+              } else {
+                setSelectedIds(prev => [...prev, id]);
+              }
+            }
+          };
+
+          const sortedInventory = useMemo(() => {
+            return [...inventory].sort((a, b) => {
+                const tierDiff = getTierOrder(a.tier) - getTierOrder(b.tier);
+                if (tierDiff !== 0) return tierDiff;
+                return a.name.localeCompare(b.name);
+            });
+          }, [inventory]);
+
+          const ItemCard = ({ item, isSelected, onClick, count = 0, isCollectionMode = false, isOwned = true }) => {
+            const style = TIERS[item.tier];
+            
+            if (isCollectionMode && !isOwned) {
+              return (
+                <div className="relative p-3 rounded-2xl border-2 border-stone-200 bg-stone-100 opacity-60 grayscale cursor-not-allowed h-full flex flex-col justify-between">
+                   <div className="flex justify-between items-start mb-2">
+                    <span className="font-bold text-[10px] px-2 py-0.5 rounded-full bg-stone-300 text-stone-500 border border-stone-300 flex items-center gap-1">
+                      {style.icon} {style.label}
+                    </span>
+                  </div>
+                  <div className="text-sm font-bold leading-tight flex items-center text-stone-400 flex-grow">
+                    {item.name}
+                  </div>
+                  <div className="mt-2 flex items-center justify-center pointer-events-none">
+                     <div className="bg-stone-300/20 px-2 py-1 rounded text-[10px] font-bold text-stone-500">未解鎖</div>
+                  </div>
+                </div>
+              );
+            }
+
+            return (
+              <div 
+                onClick={() => onClick && onClick(item.id)}
+                className={`
+                  relative p-3 rounded-2xl border-2 cursor-pointer transition-all duration-200 shadow-sm h-full flex flex-col justify-between
+                  bg-white ${style.border} 
+                  ${isSelected ? 'ring-4 ring-rose-200 scale-105 z-10 shadow-lg' : 'hover:scale-102 hover:shadow-md'}
+                `}
+              >
+                <div className="flex justify-between items-start mb-2">
+                  <span className={`font-bold text-[10px] px-2 py-0.5 rounded-full bg-white/80 backdrop-blur-sm border ${style.border} ${style.color} shadow-sm flex items-center gap-1`}>
+                    {style.icon} {style.label}
+                  </span>
+                  {item.tier === 'UR' && <Crown size={16} className="text-rose-500 animate-pulse" />}
+                  {item.tier === 'N' && (item.name === '木莓渣 (安慰獎)' || item.name.includes('渣')) && <Trash2 size={16} className="text-stone-400" />}
+                </div>
+                <div className={`text-sm font-bold leading-tight flex items-center ${item.tier === 'N' ? 'text-stone-500' : 'text-stone-700'} flex-grow`}>
+                  {item.name}
+                </div>
+                {isSelected && (
+                   <div className="absolute inset-0 bg-rose-500/10 flex items-center justify-center rounded-2xl backdrop-blur-[1px]">
+                     <div className="bg-white text-rose-500 p-2 rounded-full shadow-lg animate-bounce">
+                       <Heart size={20} fill="currentColor" />
+                     </div>
+                   </div>
+                )}
+                
+                {isCollectionMode && count > 0 && (
+                  <div className="absolute -top-2 -right-2 bg-gradient-to-r from-rose-400 to-rose-500 text-white text-xs font-black px-2 py-0.5 rounded-full shadow-md border-2 border-white transform scale-100 animate-bounce-small">
+                    x{count}
+                  </div>
+                )}
+              </div>
+            );
+          };
+
+          return (
+            <div className="min-h-screen font-sans selection:bg-rose-200 selection:text-rose-900 pb-24 text-[#431407]">
+              
+              {showRPS && (
+                <RockPaperScissorsModal 
+                  onClose={() => setShowRPS(false)} 
+                  onWin={handleRPSWin}
+                  onLoseAction={handleRPSLoseAction}
+                />
+              )}
+
+              <div className="fixed inset-0 pointer-events-none opacity-5" 
+                   style={{ backgroundImage: 'radial-gradient(circle, #fca5a5 1px, transparent 1px)', backgroundSize: '20px 20px' }}>
+              </div>
+
+              <header className="sticky top-0 z-50 bg-[#fff7ed]/90 backdrop-blur-md border-b border-rose-200 p-4 shadow-sm">
+                <div className="max-w-md mx-auto flex justify-between items-center">
+                  <div className="flex items-center gap-2">
+                    <div className="bg-white p-1.5 rounded-full shadow-sm border border-rose-100">
+                      <span className="text-xl">🍓</span>
+                    </div>
+                    <div>
+                      <h1 className="text-lg font-black text-rose-500 tracking-tight">
+                        心物語幸運抽抽樂
+                      </h1>
+                      <p className="text-[10px] font-bold text-amber-600 tracking-widest">KOKOROLIA KUJI</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-full border-2 border-amber-100 shadow-sm">
+                    <div className={coinAnimating ? 'animate-coin-jump' : ''}>
+                      <Coins size={16} className="text-amber-400 fill-amber-400" />
+                    </div>
+                    <span className={`font-mono font-bold text-stone-600 transition-colors ${coinAnimating ? 'text-amber-500' : ''}`}>{coins}</span>
+                    <button 
+                        onClick={() => setShowRPS(true)}
+                        className="ml-2 w-5 h-5 flex items-center justify-center rounded-full bg-rose-400 text-white text-[10px] hover:bg-rose-500 transition-colors shadow-sm"
+                    >
+                        +
+                    </button>
+                  </div>
+                </div>
+              </header>
+
+              <main className="max-w-md mx-auto p-4 space-y-6 relative z-10">
+
+                {activeTab === 'gacha' && (
+                  <div className="space-y-6 animate-fade-in">
+                    <div className="relative overflow-hidden rounded-3xl bg-white border-4 border-[#fed7aa] p-6 text-center shadow-xl shadow-orange-100">
+                      {/* Decorative Background Elements */}
+                      <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-rose-300 via-amber-300 to-rose-300"></div>
+                      <div className="absolute -top-10 -right-10 w-32 h-32 bg-rose-100 rounded-full blur-2xl opacity-50"></div>
+                      <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-amber-100 rounded-full blur-2xl opacity-50"></div>
+                      
+                      <Sparkles className="mx-auto text-amber-400 mb-2 animate-spin-slow" size={40} />
+                      <h2 className="text-2xl font-black text-stone-700 mb-1 drop-shadow-sm">心物語幸運抽抽樂</h2>
+                      <p className="text-sm text-stone-500 font-medium mb-1">投入心之幣，祈求傳說中的幻之逸品</p>
+                      <p className="text-[10px] text-stone-400 mb-1">(所有獎項內容可在倉庫中的全圖鑑裡查看)</p>
+                      <p className="text-xs text-rose-400 font-bold mb-6">不喜歡的獎品也可以用合成術試試手氣</p>
+                      
+                      {/* 累計抽數與保底提示 */}
+                      <div className="mb-4 bg-[#fff7ed] p-2 rounded-lg border border-amber-100 flex justify-between items-center text-xs">
+                         <span className="font-bold text-stone-600">累計抽數: {totalDraws}</span>
+                         <span className="font-bold text-rose-500">距離保底UR: {100 - pityCounter} 抽</span>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <button 
+                          onClick={() => handleDraw(1)}
+                          className="group relative overflow-hidden rounded-2xl bg-[#fff7ed] p-3 hover:bg-rose-50 transition-all shadow-md active:scale-95 border border-rose-100"
+                        >
+                          <div className="text-xs text-stone-400 mb-1 font-bold">單抽</div>
+                          <div className="text-xl font-black text-rose-500">100 幣</div>
+                        </button>
+                        <button 
+                          onClick={() => handleDraw(10)}
+                          className="group relative overflow-hidden rounded-2xl bg-gradient-to-b from-amber-200 to-amber-300 p-3 transition-all shadow-lg active:scale-95 border-2 border-white"
+                        >
+                          <div className="text-xs text-amber-800/80 mb-1 font-bold">十連抽</div>
+                          <div className="text-xl font-black text-amber-900">1000 幣</div>
+                          <div className="absolute -right-3 -top-3 bg-rose-500 text-white text-[9px] font-bold px-3 py-1 rotate-12 shadow-sm">
+                            HOT
+                          </div>
+                          <Sparkles className="absolute bottom-1 right-1 text-white/50" size={16} />
+                        </button>
+                      </div>
+                    </div>
+
+                    {lastDraw && (
+                      <div className="space-y-3 bg-white p-4 rounded-3xl shadow-sm border border-rose-100">
+                        <div className="flex justify-between items-center px-1">
+                          <h3 className="text-lg font-bold text-stone-700 flex items-center gap-2">
+                            <Gift className="text-rose-400" size={20} />
+                            合成結果
+                          </h3>
+                          <button onClick={() => setLastDraw(null)} className="text-xs text-rose-400 font-bold hover:text-rose-600">清除</button>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          {lastDraw.map((item) => (
+                            <ItemCard key={item.id} item={item} />
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
+                    <div className="rounded-2xl bg-white p-5 border border-rose-100 shadow-sm">
+                      <h4 className="font-bold mb-3 text-stone-400 text-xs uppercase tracking-wider text-center">機率公示</h4>
+                      <div className="space-y-2 text-xs">
+                        {TIER_ORDER.map((key) => {
+                          const val = TIERS[key];
+                          return (
+                            <div key={key} className="flex justify-between items-center p-2 rounded-lg bg-[#fff7ed]">
+                              <span className={`font-bold flex items-center gap-1 ${val.color}`}>
+                                {val.icon} {val.label} {val.name}
+                              </span>
+                              <span className="font-mono font-bold text-stone-400">{(val.probability * 100).toFixed(0)}%</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {activeTab === 'alchemy' && (
+                  <div className="space-y-6 animate-fade-in">
+                     <div className="rounded-3xl bg-white border-4 border-rose-100 p-6 text-center relative overflow-hidden shadow-xl shadow-rose-100/50">
+                        <div className="absolute -top-10 -left-10 w-24 h-24 bg-rose-100 rounded-full blur-2xl opacity-50"></div>
+                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-5"></div>
+                        
+                        <div className="relative z-10">
+                          <div className="w-16 h-16 bg-[#fff7ed] rounded-full flex items-center justify-center mx-auto mb-3 shadow-inner border border-rose-100">
+                            <FlaskConical className="text-rose-500 ml-1" size={32} />
+                          </div>
+                          <h2 className="text-xl font-black text-rose-500">魔法合成台</h2>
+                          <p className="text-xs text-rose-400 mb-6 font-medium bg-rose-50 inline-block px-3 py-1 rounded-full">
+                            投入 4 個素材 🔥 / 33% 失敗率 💥
+                          </p>
+
+                          <div className="grid grid-cols-4 gap-2 mb-8">
+                            {[0, 1, 2, 3].map((index) => (
+                               <div key={index} className={`aspect-[3/4] rounded-xl border-2 border-dashed flex flex-col items-center justify-center transition-all duration-300 ${selectedIds[index] ? 'border-rose-300 bg-rose-50 shadow-md' : 'border-stone-200 bg-stone-50'}`}>
+                                 {selectedIds[index] ? (
+                                   <div className="text-2xl animate-bounce-small">🎁</div>
+                                 ) : (
+                                   <span className="text-stone-300 text-[10px] font-bold text-center leading-none">
+                                     Slot<br/>{index + 1}
+                                   </span>
+                                 )}
+                               </div>
+                            ))}
+                          </div>
+
+                          <button
+                            disabled={selectedIds.length !== 4}
+                            onClick={handleTransmute}
+                            className={`
+                              w-full py-4 rounded-2xl font-black text-lg shadow-lg flex items-center justify-center gap-2 transition-all active:scale-95
+                              ${selectedIds.length === 4 
+                                ? 'bg-gradient-to-r from-rose-400 to-rose-500 text-white shadow-rose-200' 
+                                : 'bg-stone-200 text-stone-400 cursor-not-allowed'}
+                            `}
+                          >
+                            <Zap size={20} className={selectedIds.length === 4 ? 'fill-yellow-300 text-yellow-300' : ''} />
+                            開始合成
+                          </button>
+                        </div>
+                     </div>
+
+                     {alchemyResult && (
+                       <div className={`p-6 rounded-3xl border-4 text-center animate-bounce-in shadow-xl ${alchemyResult.status === 'success' ? 'bg-amber-50 border-amber-200' : 'bg-stone-100 border-stone-200'}`}>
+                         <div className="text-4xl mb-2">{alchemyResult.status === 'success' ? '🎉' : '💥'}</div>
+                         <h3 className={`font-black text-xl mb-1 ${alchemyResult.status === 'success' ? 'text-amber-600' : 'text-stone-500'}`}>
+                           {alchemyResult.status === 'success' ? '合成大成功！' : '合成失敗...'}
+                         </h3>
+                         <p className="text-sm text-stone-500 mb-4 font-bold">
+                           {alchemyResult.status === 'success' ? '太神啦！必定獲得 SR 物品！' : '嗚嗚...物品劣化成普通雜物了'}
+                         </p>
+                         <div className="max-w-[160px] mx-auto transform rotate-2 hover:rotate-0 transition-transform">
+                           <ItemCard item={alchemyResult.item} />
+                         </div>
+                         <button onClick={() => setAlchemyResult(null)} className="mt-6 text-sm font-bold text-stone-400 hover:text-stone-600 px-4 py-2 bg-white rounded-full border border-stone-200">再來一次</button>
+                       </div>
+                     )}
+
+                     <div className="space-y-3">
+                       <h3 className="text-sm font-bold text-stone-500 px-2 flex items-center gap-2">
+                         <ShoppingBag size={14} /> 選擇庫存素材 (需4個同階級)：
+                       </h3>
+                       <div className="grid grid-cols-2 gap-3 max-h-[400px] overflow-y-auto pr-1 pb-20">
+                         {sortedInventory.length === 0 && (
+                           <div className="col-span-2 text-center py-10 bg-white rounded-2xl border border-dashed border-stone-300">
+                             <p className="text-stone-400 font-bold">庫存空空如也，去抽獎吧！</p>
+                           </div>
+                         )}
+                         {sortedInventory.map(item => (
+                           <div key={item.id} className={`transition-opacity duration-200 ${selectedIds.includes(item.id) ? 'opacity-100 scale-95' : 'opacity-100'}`}>
+                             <ItemCard 
+                                item={item} 
+                                isSelected={selectedIds.includes(item.id)} 
+                                onClick={toggleSelection}
+                              />
+                           </div>
+                         ))}
+                       </div>
+                     </div>
+                  </div>
+                )}
+
+                {activeTab === 'inventory' && (
+                  <div className="space-y-4 animate-fade-in">
+                    <div className="bg-white p-2 rounded-2xl shadow-sm border border-rose-100">
+                      <div className="flex justify-between items-center px-2 mb-3">
+                        <h2 className="text-lg font-black text-stone-700 flex items-center gap-2">
+                          <Ticket className="text-rose-400" /> 我的收藏
+                        </h2>
+                        <div className="flex bg-[#fff7ed] p-1 rounded-full">
+                          <button 
+                            onClick={() => setInventoryView('owned')}
+                            className={`px-3 py-1 rounded-full text-xs font-bold transition-all ${inventoryView === 'owned' ? 'bg-white shadow-sm text-rose-500' : 'text-stone-400 hover:text-stone-600'}`}
+                          >
+                             持有物品
+                          </button>
+                          <button 
+                            onClick={() => setInventoryView('collection')}
+                            className={`px-3 py-1 rounded-full text-xs font-bold transition-all flex items-center gap-1 ${inventoryView === 'collection' ? 'bg-white shadow-sm text-rose-500' : 'text-stone-400 hover:text-stone-600'}`}
+                          >
+                             <BookOpen size={12}/> 全圖鑑
+                          </button>
+                        </div>
+                      </div>
+
+                      {inventoryView === 'owned' && (
+                        <div className="grid grid-cols-5 gap-2 text-center text-[10px] animate-fade-in">
+                           {TIER_ORDER.map(tier => {
+                             const count = inventory.filter(i => i.tier === tier).length;
+                             const style = TIERS[tier];
+                             return (
+                               <div key={tier} className={`flex flex-col items-center justify-center p-2 rounded-xl bg-[#fff7ed] border ${style.border}`}>
+                                 <div className="text-base mb-1">{style.icon}</div>
+                                 <div className={`font-black ${style.color}`}>{tier}</div>
+                                 <div className="text-stone-400 font-mono mt-1">{count}</div>
+                               </div>
+                             )
+                           })}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="space-y-4 pb-20 animate-fade-in">
+                        {TIER_ORDER.map(tier => {
+                          const tierItems = inventoryView === 'owned' 
+                            ? inventory.filter(i => i.tier === tier)
+                            : ITEMS_DATA[tier];
+                          
+                          // In collection mode always show. In owned mode show if items exist.
+                          if (inventoryView === 'owned' && tierItems.length === 0) return null;
+
+                          return (
+                            <div key={tier} className="bg-white rounded-2xl border border-rose-100 overflow-hidden shadow-sm">
+                              <button 
+                                onClick={() => toggleTier(tier)}
+                                className={`w-full flex items-center justify-between p-3 ${TIERS[tier].bg} transition-colors`}
+                              >
+                                <div className="flex items-center gap-2">
+                                  <span className={`text-xl`}>{TIERS[tier].icon}</span>
+                                  <span className={`font-black ${TIERS[tier].color}`}>{TIERS[tier].label}</span>
+                                  <span className="text-xs text-stone-500 font-bold">{TIERS[tier].name}</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs font-bold text-stone-400 bg-white/50 px-2 py-0.5 rounded-full">
+                                    {inventoryView === 'owned' ? `${tierItems.length} 件` : '全圖鑑'}
+                                  </span>
+                                  {expandedTiers[tier] ? <ChevronUp size={16} className="text-stone-400"/> : <ChevronDown size={16} className="text-stone-400"/>}
+                                </div>
+                              </button>
+                              
+                              {expandedTiers[tier] && (
+                                <div className="p-3 bg-[#fff7ed]/30">
+                                  <div className="grid grid-cols-2 gap-3">
+                                     {inventoryView === 'owned' 
+                                       ? tierItems.map((item) => (
+                                           <ItemCard key={item.id} item={item} />
+                                         ))
+                                       : tierItems.map(itemName => {
+                                            const count = inventory.filter(i => i.name === itemName).length;
+                                            const isOwned = count > 0;
+                                            const mockItem = { id: itemName, tier: tier, name: itemName };
+                                            return (
+                                              <ItemCard 
+                                                key={itemName} 
+                                                item={mockItem} 
+                                                isCollectionMode={true} 
+                                                isOwned={isOwned} 
+                                                count={count}
+                                              />
+                                            );
+                                         })
+                                     }
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                        
+                        {inventoryView === 'owned' && inventory.length === 0 && (
+                          <div className="text-center py-20 text-stone-400">
+                            <div className="w-16 h-16 bg-[#fff7ed] rounded-full flex items-center justify-center mx-auto mb-4">
+                              <ShoppingBag size={24} className="opacity-50" />
+                            </div>
+                            <p className="font-bold">這裡什麼都沒有...</p>
+                            <p className="text-xs mt-1">去抽點好東西吧！</p>
+                          </div>
+                        )}
+                    </div>
+
+                  </div>
+                )}
+
+              </main>
+
+              <nav className="fixed bottom-0 w-full bg-[#fff7ed]/90 backdrop-blur-lg border-t border-rose-100 pb-safe z-50 rounded-t-3xl shadow-[0_-5px_20px_-5px_rgba(0,0,0,0.05)]">
+                <div className="max-w-md mx-auto flex justify-around p-3">
+                  <button 
+                    onClick={() => setActiveTab('gacha')}
+                    className={`flex flex-col items-center p-2 transition-all active:scale-95 ${activeTab === 'gacha' ? 'text-rose-500 -translate-y-2' : 'text-stone-400 hover:text-rose-400'}`}
+                  >
+                    <div className={`p-2 rounded-full ${activeTab === 'gacha' ? 'bg-rose-100 shadow-lg shadow-rose-200' : ''}`}>
+                      <Sparkles size={24} className={activeTab === 'gacha' ? 'fill-rose-500' : ''} />
+                    </div>
+                    <span className="text-[10px] font-bold mt-1">轉蛋</span>
+                  </button>
+                  
+                  <button 
+                    onClick={() => setActiveTab('alchemy')}
+                    className={`flex flex-col items-center p-2 transition-all active:scale-95 ${activeTab === 'alchemy' ? 'text-amber-600 -translate-y-2' : 'text-stone-400 hover:text-amber-500'}`}
+                  >
+                    <div className={`relative p-2 rounded-full ${activeTab === 'alchemy' ? 'bg-amber-100 shadow-lg shadow-amber-200' : ''}`}>
+                      <FlaskConical size={24} className={activeTab === 'alchemy' ? 'fill-amber-600' : ''} />
+                      {activeTab !== 'alchemy' && inventory.length >= 4 && (
+                        <span className="absolute top-0 right-0 w-3 h-3 bg-rose-500 border-2 border-white rounded-full animate-ping"></span>
+                      )}
+                    </div>
+                    <span className="text-[10px] font-bold mt-1">合成術</span>
+                  </button>
+
+                  <button 
+                    onClick={() => setActiveTab('inventory')}
+                    className={`flex flex-col items-center p-2 transition-all active:scale-95 ${activeTab === 'inventory' ? 'text-blue-500 -translate-y-2' : 'text-stone-400 hover:text-blue-400'}`}
+                  >
+                    <div className={`p-2 rounded-full ${activeTab === 'inventory' ? 'bg-blue-100 shadow-lg shadow-blue-200' : ''}`}>
+                      <ShoppingBag size={24} className={activeTab === 'inventory' ? 'fill-blue-500' : ''} />
+                    </div>
+                    <span className="text-[10px] font-bold mt-1">倉庫</span>
+                  </button>
+                </div>
+              </nav>
+
+            </div>
+          );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
